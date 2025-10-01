@@ -165,12 +165,51 @@ Common errors:
 - `ERROR Invalid range: min must be less than max` - Range validation failed
 
 ## Technical Details
+
+### Architecture
 - Supports up to 8 servo channels simultaneously
 - PWM frame rate: 50Hz (20ms period)
 - Default pulse range: 1000-2000μs
 - Default neutral position: 1500μs
 - Uses timerfd for accurate timing
 - Real-time scheduling (SCHED_FIFO) for timing precision
+
+### Software PWM vs Hardware PWM
+
+**Why Software PWM?**
+The Raspberry Pi has limited hardware PWM channels (typically 2), but many applications need to control multiple servos simultaneously. This daemon provides software-based PWM that can drive up to 8 servos using any GPIO pins.
+
+**Advantages:**
+- Control 8+ servos on any GPIO pins
+- No hardware PWM channel conflicts
+- Flexible pin assignment
+- Simple protocol-based control
+
+**Trade-offs:**
+- Higher CPU usage than hardware PWM
+- Timing depends on system load and kernel scheduling
+- Potential jitter under heavy system load
+
+### Performance Characteristics
+
+**Timing Accuracy:**
+- Frame timing controlled by `timerfd` with `CLOCK_MONOTONIC`
+- Real-time scheduling (SCHED_FIFO) reduces scheduling latency
+- Typical jitter: <50μs under normal system load
+- Increased jitter (100-500μs) possible under high CPU load or with non-RT kernels
+
+**Multi-Servo Timing:**
+- Servos are sorted by pulse width and activated sequentially within each 20ms frame
+- All servos start HIGH simultaneously
+- Each servo is cleared LOW at its specific pulse width time
+- Inter-servo timing is deterministic within a single frame
+- Total pulse width spread across all servos must fit within ~2ms (typical servo range)
+
+### Limitations
+- Maximum 8 simultaneous servo channels
+- Not suitable for precision applications requiring <10μs accuracy
+- Performance degrades with heavy system load
+- Requires root access for real-time scheduling and GPIO access
 
 ## Contribting
 Contributions are welcome!
